@@ -108,7 +108,7 @@ typedef struct Qureg
 
     //! Storage for generated QASM output
     QASMLogger* qasmLog;
-    
+    void *rhandle;
 } Qureg;
 
 /** Information about the environment the program is running in.
@@ -118,6 +118,7 @@ typedef struct QuESTEnv
 {
     int rank;
     int numRanks;
+    void* ehandle;
 } QuESTEnv;
 
 

@@ -1,103 +1,71 @@
-# [QuEST](https://quest.qtechtheory.org)
+# SYSuEST
 
-## Introduction
+Distributed GPU acceleration of [QuEST_v2.1.0](https://github.com/QuEST-Kit/QuEST/releases/tag/2.1.0) for the QuEST Chanllenge in [ASC20-21](http://www.asc-events.net/ASC20-21/Preliminary.php).
 
-The **Quantum Exact Simulation Toolkit** is a high performance simulator of universal quantum circuits, state-vectors and density matrices. QuEST is written in C, hybridises OpenMP and MPI, and can run on a GPU. Needing only compilation, QuEST is easy to run both on laptops and supercomputers (in both C and C++), where it can take advantage of multicore, GPU-accelerated and networked machines to quickly simulate circuits on many qubits.
+Supported by Student Cluster Competition Team @ Sun Yat-sen University.
 
-QuEST has a simple interface, independent of its run environment (on CPUs, GPUs or over networks),
-```C
-hadamard(qubits, 0);
+## Quick Start
 
-controlledNot(qubits, 0, 1);
-
-rotateY(qubits, 0, .1);
-```
-though is flexible
-```C
-Vector v;
-v.x = 1; v.y = .5; v.z = 0;
-rotateAroundAxis(qubits, 0, 3.14/2, v);
-```
-and powerful
-```C
-// sqrt(X) with pi/4 global phase
-ComplexMatrix2 u;
-u.r0c0 = (Complex) {.real=.5, .imag= .5};
-u.r0c1 = (Complex) {.real=.5, .imag=-.5}; 
-u.r1c0 = (Complex) {.real=.5, .imag=-.5};
-u.r1c1 = (Complex) {.real=.5, .imag= .5};
-unitary(qubits, 0, u);
-
-int[] controls = {1, 2, 3, 4, 5};
-multiControlledUnitary(qureg, controls, 5, 0, u);
-```
-
-QuEST can simulate decoherence on mixed states, output [QASM](https://arxiv.org/abs/1707.03429), perform measurements, apply gates with any number of control qubits, and provides cheap/fast access to the underlying statevector. QuEST offers precision-agnostic real and imaginary (additionally include `QuEST_complex.h`) number types, the precision of which can be modified at compile-time, as can the target hardware.
-
-Learn more about QuEST at [quest.qtechtheory.org](https://quest.qtechtheory.org).
-
-## Getting started
-
-QuEST is contained entirely in the files in the `QuEST/` folder. To use QuEST, copy this folder to your computer and include `QuEST.h` in your `C` or `C++` code, and compile using cmake with the provided [CMakeLists.txt](CMakeLists.txt file). See the [tutorial](/examples/README.md) for an introduction, and view the full API [here](https://quest-kit.github.io/QuEST/QuEST_8h.html).
-
-We also include example [submission scripts](examples/submissionScripts/) for using QuEST with SLURM and PBS. 
-
-### Quick Start
-
-Copy or clone this repository to your machine. E.g. in the desired directory, enter
 ```bash
-git clone https://github.com/quest-kit/QuEST.git
-cd QuEST
-```
-at terminal. You can then compile the [example](examples/tutorial_example.c) using
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
-then run it with
-```bash
-./demo
-```
-and afterward, clean up with
-```bash
-make clean
-````
-
-or, to remove the build directory entirely, from the root directory
-```bash
-rm -r build
+bash examples/SYSuEST/run.sh
 ```
 
-The program will print information about your execution environment and some simple operations on a three qubit system. See the [tutorial](examples/README.md) for a better introduction. 
+## Results
 
-Additionally, you can run unit tests to see if QuEST runs correctly in your environment, using
+|  GPU(s)   |   1   |   2   |   4   |
+| :-------: | :---: | :---: | :---: |
+|  random   |   x   | 9.82s | 7.48s |
+|    GHZ    |   x   | 1.13s | 0.86s |
+| GHZ_QFT_N | 0.91s | 0.54s | 0.43s |
+
+### Environment
+
 ```bash
-make test
+$ nvidia-smi
+Wed May  5 18:58:36 2021
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 418.67       Driver Version: 418.67       CUDA Version: 10.1     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|===============================+======================+======================|
+|   0  Tesla V100-SXM2...  Off  | 00000000:8A:00.0 Off |                    0 |
+| N/A   39C    P0    56W / 300W |     10MiB / 16130MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   1  Tesla V100-SXM2...  Off  | 00000000:8B:00.0 Off |                    0 |
+| N/A   36C    P0    61W / 300W |     10MiB / 16130MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   2  Tesla V100-SXM2...  Off  | 00000000:B3:00.0 Off |                    0 |
+| N/A   36C    P0    62W / 300W |     10MiB / 16130MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   3  Tesla V100-SXM2...  Off  | 00000000:B4:00.0 Off |                    0 |
+| N/A   39C    P0    60W / 300W |     10MiB / 16130MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+
++-----------------------------------------------------------------------------+
+| Processes:                                                       GPU Memory |
+|  GPU       PID   Type   Process name                             Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+$ nvidia-smi topo -m
+        GPU0    GPU1    GPU2    GPU3    mlx5_0  mlx5_1  mlx5_2  mlx5_3  CPU Affinity
+GPU0     X      NV2     NV1     NODE    PIX     PIX     NODE    NODE    14-27
+GPU1    NV2      X      NODE    NV2     PIX     PIX     NODE    NODE    14-27
+GPU2    NV1     NODE     X      NV2     NODE    NODE    PIX     PIX     14-27
+GPU3    NODE    NV2     NV2      X      NODE    NODE    PIX     PIX     14-27
+mlx5_0  PIX     PIX     NODE    NODE     X      PIX     NODE    NODE
+mlx5_1  PIX     PIX     NODE    NODE    PIX      X      NODE    NODE
+mlx5_2  NODE    NODE    PIX     PIX     NODE    NODE     X      PIX
+mlx5_3  NODE    NODE    PIX     PIX     NODE    NODE    PIX      X
+
+Legend:
+
+  X    = Self
+  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)
+  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node
+  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)
+  PXB  = Connection traversing multiple PCIe switches (without traversing the PCIe Host Bridge)
+  PIX  = Connection traversing a single PCIe switch
+  NV#  = Connection traversing a bonded set of # NVLinks
 ```
-
-This requires Python 3.4+. 
-
-## Documentation
-
-View the API [here](https://quest-kit.github.io/QuEST/QuEST_8h.html), and check compatible compiler versions [here](tests/compilers/compatibility.md).
-
-> For developers: To recreate the full documentation after making changes to the code, run doxygen doxyconf in the root directory. This will generate documentation in Doxygen_doc/html, and can be accessed through index.html in that folder. 
-
-## Acknowledgements
-
-QuEST uses the [mt19937ar](http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/MT2002/emt19937ar.html) Mersenne Twister algorithm for random number generation, under the BSD licence. QuEST optionally (by additionally importing `QuEST_complex.h`) integrates the [language agnostic complex type](http://collaboration.cmc.ec.gc.ca/science/rpn/biblio/ddj/Website/articles/CUJ/2003/0303/cuj0303meyers/index.htm) by Randy Meyers and Dr. Thomas Plum
-
-Thanks to [HQS Quantum simulations](https://quantumsimulations.de/) for contributing the applyOneQubitDampingError function.
-
-## Licence
-
-QuEST is released under a [MIT Licence](https://github.com/quest-kit/QuEST/blob/master/LICENCE.txt)
-
-
-## Related projects -- QuEST utilities and extensions
-
-* [PyQuEST-cffi](https://github.com/HQSquantumsimulations/PyQuEST-cffi): a python interface to QuEST based on cffi developed by HQS Quantum Simulations. Please note, PyQuEST-cffi is currently in the alpha stage and not an official QuEST project.
-
-

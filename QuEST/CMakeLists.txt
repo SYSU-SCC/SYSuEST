@@ -49,11 +49,11 @@ message(STATUS "MPI distribution is ${DISTRIBUTED}")
 
 # ----- FATAL -----------------------------------------------------------------
 
-if (${DISTRIBUTED} AND ${GPUACCELERATED})
-    message(FATAL_ERROR "DISTRIBUTED=${DISTRIBUTED} and \
-        GPUACCELERATED=${GPUACCELERATED} set but \
-        distributed GPU acceleration not supported. Aborting")
-endif()
+# if (${DISTRIBUTED} AND ${GPUACCELERATED})
+#    message(FATAL_ERROR "DISTRIBUTED=${DISTRIBUTED} and \
+#        GPUACCELERATED=${GPUACCELERATED} set but \
+#        distributed GPU acceleration not supported. Aborting")
+# endif()
 
 if ( NOT(${PRECISION} EQUAL 1) AND
      NOT(${PRECISION} EQUAL 2) AND 
@@ -70,6 +70,13 @@ if ( (${PRECISION} EQUAL 4) AND
 endif()
 
 # ----- WARNINGS --------------------------------------------------------------
+
+if (${DISTRIBUTED} AND ${GPUACCELERATED})
+    message(WARNING "DISTRIBUTED=${DISTRIBUTED} and \
+        GPUACCELERATED=${GPUACCELERATED} set. \
+        Distributed GPU acceleration is supported by \
+        Student Cluster Competition Team @ Sun Yat-sen University.")
+endif()
 
 if (${GPUACCELERATED} AND ${MULTITHREADED})
     message(WARNING "MULTITHREADED=${MULTITHREADED} and \

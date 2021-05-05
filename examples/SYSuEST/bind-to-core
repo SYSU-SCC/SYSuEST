@@ -1,0 +1,15 @@
+#!/bin/bash
+
+CORE_RANK=$OMPI_COMM_WORLD_LOCAL_RANK
+
+EXE="echo -n \"\""
+
+if [ $CORE_RANK -eq 0 ]; then
+    numactl --physcpubind=14 $*
+elif [ $CORE_RANK -eq 1 ]; then
+    numactl --physcpubind=15 $*
+elif [ $CORE_RANK -eq 2 ]; then
+    numactl --physcpubind=16 $*
+else
+    numactl --physcpubind=17 $*
+fi
