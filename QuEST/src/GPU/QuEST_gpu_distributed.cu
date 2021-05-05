@@ -424,7 +424,8 @@ __launch_bounds__(BLOCK_DIM_X) void statevec_findAllProbabilityOfZeroKernel(
        index < numTasks; index += stride) {
     do {
       auto t = make_cuDoubleComplex(stateVecReal[index], stateVecImag[index]);
-      buffer[measureQubit] = cuCreal(t) * cuCreal(t) + cuCimag(t) * cuCimag(t);
+      buffer[measureQubit] =
+          fma(cuCreal(t), cuCreal(t), cuCimag(t) * cuCimag(t));
       __syncthreads();
     } while (0);
     if (measureQubit < PROBABILITY_PRE_CALCULATION)
@@ -1009,7 +1010,7 @@ static bool doCompute(Qureg qureg) {
   return 1;
 }
 
-void copyStateToGPU(Qureg qureg) {
+static void copyStateToGPU(Qureg qureg) {
   cudaMemcpyAsync(qureg.deviceStateVec.real, qureg.stateVec.real,
                   qureg.numAmpsPerChunk * sizeof(*(qureg.deviceStateVec.real)),
                   cudaMemcpyHostToDevice, get_wukDeviceHandle(qureg)->stream());
@@ -1018,7 +1019,7 @@ void copyStateToGPU(Qureg qureg) {
                   cudaMemcpyHostToDevice, get_wukDeviceHandle(qureg)->stream());
 }
 
-void copyStateFromGPU(Qureg qureg) {
+static void copyStateFromGPU(Qureg qureg) {
   cudaMemcpyAsync(qureg.stateVec.real, qureg.deviceStateVec.real,
                   qureg.numAmpsPerChunk * sizeof(*(qureg.deviceStateVec.real)),
                   cudaMemcpyDeviceToHost, get_wukDeviceHandle(qureg)->stream());
