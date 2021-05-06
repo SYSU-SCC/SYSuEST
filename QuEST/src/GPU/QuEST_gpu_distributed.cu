@@ -23,7 +23,7 @@
 #endif
 
 #if !defined(COMBINE_BIT)
-#define COMBINE_BIT 10
+#define COMBINE_BIT 10 // 11 for A100
 #endif
 
 #if !defined(EXCHANGE_WARMUP_BIT)
@@ -887,24 +887,27 @@ statevec_multiControlledUnitary_combine_doCompute(Qureg qureg, const int task_n,
   }
 }
 
-template <int BLOCK_DIM_X, int CBIT>
+template <int BLOCK_DIM_X, int BLOCK_TASK>
 static __global__
 __launch_bounds__(BLOCK_DIM_X) void statevec_multiControlledUnitary_mixcombine_LocalKernel(
     Qureg qureg, qreal *stateVecReal, qreal *stateVecImag, const int task_n) {
   // ----- temp variables
   auto idx = threadIdx.x;
-  const long long int numTasks = qureg.numAmpsPerChunk >> 1;
+  do {
+    auto numTasks = qureg.numAmpsPerChunk / (BLOCK_TASK / BLOCK_DIM_X);
 
-  const long long int thisTask = (long long int)blockIdx.x * BLOCK_DIM_X + idx;
-  // task based approach for expose loop with small granularity
-  if (thisTask >= numTasks)
-    return;
+    const long long int thisTask =
+        (long long int)blockIdx.x * BLOCK_DIM_X + idx;
+    // task based approach for expose loop with small granularity
+    if (thisTask >= numTasks)
+      return;
+  } while (0);
 
   auto offset = qureg.numAmpsPerChunk * qureg.chunkId;
   extern __shared__ cuDoubleComplex state[];
-  auto len = 2LL << CBIT, poffset = len * blockIdx.x;
+  auto poffset = BLOCK_TASK * blockIdx.x;
 #pragma unroll
-  for (auto i = 0; i < len; i += BLOCK_DIM_X)
+  for (auto i = 0; i < BLOCK_TASK; i += BLOCK_DIM_X)
     state[i + idx] = make_cuDoubleComplex(stateVecReal[poffset + i + idx],
                                           stateVecImag[poffset + i + idx]);
   for (int j = 0; j < task_n; ++j) {
@@ -916,8 +919,8 @@ __launch_bounds__(BLOCK_DIM_X) void statevec_multiControlledUnitary_mixcombine_L
     auto sizeBlock = 2LL * sizeHalfBlock;    // size of blocks
     __syncthreads();
 #pragma unroll
-    for (auto i = 0; i < (len >> 1); i += BLOCK_DIM_X) {
-      auto myTask = i + idx;
+    for (auto i = 0; i < BLOCK_TASK / 2 / BLOCK_DIM_X; ++i) {
+      auto myTask = i * BLOCK_DIM_X + idx;
       auto thisBlock = myTask >> targetQubit;
       auto indexUp = thisBlock * sizeBlock + (myTask & (sizeHalfBlock - 1));
       auto indexLo = indexUp + sizeHalfBlock;
@@ -944,7 +947,7 @@ __launch_bounds__(BLOCK_DIM_X) void statevec_multiControlledUnitary_mixcombine_L
     __syncthreads();
   }
 #pragma unroll
-  for (int i = 0; i < len; i += BLOCK_DIM_X) {
+  for (int i = 0; i < BLOCK_TASK; i += BLOCK_DIM_X) {
     stateVecReal[poffset + i + idx] = cuCreal(state[i + idx]);
     stateVecImag[poffset + i + idx] = cuCimag(state[i + idx]);
   }
@@ -969,12 +972,19 @@ static void statevec_multiControlledUnitary_mixcombine_doCompute(
                           cudaMemcpyHostToDevice,
                           get_wukDeviceHandle(qureg)->stream());
   const int threadsPerCUDABlock = THREADS_PER_CUDA_BLOCK;
+  const int BLOCK_TASK = 2LL << CBIT;
   int CUDABlocks =
-      ceil((qreal)(qureg.numAmpsPerChunk >> 1) / threadsPerCUDABlock);
+      ceil((qreal)(qureg.numAmpsPerChunk / (BLOCK_TASK / threadsPerCUDABlock)) /
+           threadsPerCUDABlock);
+  static_assert(BLOCK_TASK / threadsPerCUDABlock >= 2);
+  static_assert(BLOCK_TASK % threadsPerCUDABlock == 0);
+  cudaFuncSetAttribute(statevec_multiControlledUnitary_mixcombine_LocalKernel<
+                           threadsPerCUDABlock, BLOCK_TASK>,
+                       cudaFuncAttributeMaxDynamicSharedMemorySize,
+                       BLOCK_TASK * sizeof(cuDoubleComplex)); // F**K
   statevec_multiControlledUnitary_mixcombine_LocalKernel<threadsPerCUDABlock,
-                                                         CBIT>
-      <<<CUDABlocks, threadsPerCUDABlock,
-         (2LL << CBIT) * sizeof(cuDoubleComplex),
+                                                         BLOCK_TASK>
+      <<<CUDABlocks, threadsPerCUDABlock, BLOCK_TASK * sizeof(cuDoubleComplex),
          get_wukDeviceHandle(qureg)->stream()>>>(
           qureg, qureg.deviceStateVec.real, qureg.deviceStateVec.imag, task_n);
 }

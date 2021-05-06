@@ -7,7 +7,7 @@
 SYSUEST_HOME=~/SYSuEST
 
 spack unload -a
-spack load cmake
+spack load cmake@3.18.3
 spack load gcc@7.5.0
 
 if true; then

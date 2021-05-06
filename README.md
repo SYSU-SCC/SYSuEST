@@ -7,14 +7,14 @@ Supported by Student Cluster Competition Team @ Sun Yat-sen University.
 ## Quick Start
 
 ```bash
-bash examples/SYSuEST/run.sh
+examples/SYSuEST/run.sh
 ```
 
 ## Results
 
 |     GPU(s)      |   1   |   2   |   4   |
 | :-------------: | :---: | :---: | :---: |
-|     random      |   x   | 9.73s | 7.44s |
+|     random      |   x   | 9.62s | 7.38s |
 |       GHZ       |   x   | 0.98s | 0.79s |
 | GHZ_QFT_N(N=29) | 0.75s | 0.47s | 0.38s |
 
