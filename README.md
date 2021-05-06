@@ -12,11 +12,11 @@ bash examples/SYSuEST/run.sh
 
 ## Results
 
-|  GPU(s)   |   1   |   2   |   4   |
-| :-------: | :---: | :---: | :---: |
-|  random   |   x   | 9.82s | 7.48s |
-|    GHZ    |   x   | 1.13s | 0.86s |
-| GHZ_QFT_N | 0.91s | 0.54s | 0.43s |
+|     GPU(s)      |   1   |   2   |   4   |
+| :-------------: | :---: | :---: | :---: |
+|     random      |   x   | 9.73s | 7.44s |
+|       GHZ       |   x   | 0.98s | 0.79s |
+| GHZ_QFT_N(N=29) | 0.75s | 0.47s | 0.38s |
 
 ### Environment
 

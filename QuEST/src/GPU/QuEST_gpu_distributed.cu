@@ -950,6 +950,7 @@ __launch_bounds__(BLOCK_DIM_X) void statevec_multiControlledUnitary_mixcombine_L
   }
 }
 
+template <int CBIT>
 static void statevec_multiControlledUnitary_mixcombine_doCompute(
     Qureg qureg, const int task_n, const Qtask *task_host) {
   if (task_n < 2) {
@@ -958,9 +959,9 @@ static void statevec_multiControlledUnitary_mixcombine_doCompute(
     return;
   }
   if (task_n > MAX_TASK_SIZE) {
-    statevec_multiControlledUnitary_mixcombine_doCompute(qureg, MAX_TASK_SIZE,
-                                                         task_host);
-    statevec_multiControlledUnitary_mixcombine_doCompute(
+    statevec_multiControlledUnitary_mixcombine_doCompute<CBIT>(
+        qureg, MAX_TASK_SIZE, task_host);
+    statevec_multiControlledUnitary_mixcombine_doCompute<CBIT>(
         qureg, task_n - MAX_TASK_SIZE, task_host + MAX_TASK_SIZE);
     return;
   }
@@ -971,9 +972,9 @@ static void statevec_multiControlledUnitary_mixcombine_doCompute(
   int CUDABlocks =
       ceil((qreal)(qureg.numAmpsPerChunk >> 1) / threadsPerCUDABlock);
   statevec_multiControlledUnitary_mixcombine_LocalKernel<threadsPerCUDABlock,
-                                                         COMBINE_BIT>
+                                                         CBIT>
       <<<CUDABlocks, threadsPerCUDABlock,
-         (2LL << COMBINE_BIT) * sizeof(cuDoubleComplex),
+         (2LL << CBIT) * sizeof(cuDoubleComplex),
          get_wukDeviceHandle(qureg)->stream()>>>(
           qureg, qureg.deviceStateVec.real, qureg.deviceStateVec.imag, task_n);
 }
@@ -993,11 +994,11 @@ static bool doCompute(Qureg qureg) {
         while (
             i + task_n < (int)tbd.size() &&
             tbd[i + task_n].func == Qfunc_statevec_multiControlledUnitary &&
-            tbd[i + task_n].args.statevec_multiControlledUnitary.targetQubit <
+            tbd[i + task_n].args.statevec_multiControlledUnitary.targetQubit <=
                 COMBINE_BIT)
           ++task_n;
-        statevec_multiControlledUnitary_mixcombine_doCompute(qureg, task_n,
-                                                             tbd.data() + i);
+        statevec_multiControlledUnitary_mixcombine_doCompute<COMBINE_BIT>(
+            qureg, task_n, tbd.data() + i);
       } else {
         while (
             i + task_n < (int)tbd.size() &&
