@@ -1,6 +1,6 @@
 #include "QuEST.h"
 #include "mytimer.hpp"
-#include "stdio.h"
+#include <stdio.h>
 #define N 29
 int main(int narg, char *argv[]) {
 

@@ -2,9 +2,9 @@
 // https://github.com/SYSU_SCC/SYSuEST/blob/master/LICENCE.txt for details
 
 /** @file
- * An implementation of the backend in ../QuEST_ops.h for an MPI environment.
- * Distributed GPU acceleration is supported by
- * Student Cluster Competition Team @ Sun Yat-sen University.
+ * An implementation of the backend in ../QuEST_internal.h for an MPI
+ * environment. Distributed GPU acceleration is supported by Student Cluster
+ * Competition Team @ Sun Yat-sen University.
  */
 
 #include <cublas_v2.h>
@@ -505,6 +505,13 @@ static void statevec_multiControlledPhaseShift_combine_doCompute(
       statevec_multiControlledPhaseShift_doCompute(qureg, task_host[j]);
     return;
   }
+  if (task_n > MAX_TASK_SIZE) {
+    statevec_multiControlledPhaseShift_combine_doCompute(qureg, MAX_TASK_SIZE,
+                                                         task_host);
+    statevec_multiControlledPhaseShift_combine_doCompute(
+        qureg, task_n - MAX_TASK_SIZE, task_host + MAX_TASK_SIZE);
+    return;
+  }
   cudaMemcpyToSymbolAsync(task_device, task_host, task_n * sizeof(Qtask), 0,
                           cudaMemcpyHostToDevice,
                           get_wukDeviceHandle(qureg)->stream());
@@ -789,6 +796,13 @@ statevec_multiControlledUnitary_combine_doCompute(Qureg qureg, const int task_n,
       statevec_multiControlledUnitary_doCompute(qureg, task_host[j]);
     return;
   }
+  if (task_n > MAX_TASK_SIZE) {
+    statevec_multiControlledUnitary_combine_doCompute(qureg, MAX_TASK_SIZE,
+                                                      task_host);
+    statevec_multiControlledUnitary_combine_doCompute(
+        qureg, task_n - MAX_TASK_SIZE, task_host + MAX_TASK_SIZE);
+    return;
+  }
   cudaMemcpyToSymbolAsync(task_device, task_host, task_n * sizeof(Qtask), 0,
                           cudaMemcpyHostToDevice,
                           get_wukDeviceHandle(qureg)->stream());
@@ -943,6 +957,13 @@ static void statevec_multiControlledUnitary_mixcombine_doCompute(
       statevec_multiControlledUnitary_doCompute(qureg, task_host[j]);
     return;
   }
+  if (task_n > MAX_TASK_SIZE) {
+    statevec_multiControlledUnitary_mixcombine_doCompute(qureg, MAX_TASK_SIZE,
+                                                         task_host);
+    statevec_multiControlledUnitary_mixcombine_doCompute(
+        qureg, task_n - MAX_TASK_SIZE, task_host + MAX_TASK_SIZE);
+    return;
+  }
   cudaMemcpyToSymbolAsync(task_device, task_host, task_n * sizeof(Qtask), 0,
                           cudaMemcpyHostToDevice,
                           get_wukDeviceHandle(qureg)->stream());
@@ -979,7 +1000,7 @@ static bool doCompute(Qureg qureg) {
                                                              tbd.data() + i);
       } else {
         while (
-            i + task_n < (int)tbd.size() && task_n < MAX_TASK_SIZE &&
+            i + task_n < (int)tbd.size() &&
             tbd[i + task_n].func == Qfunc_statevec_multiControlledUnitary &&
             tbd[i + task_n].args.statevec_multiControlledUnitary.targetQubit ==
                 targetQubit)
@@ -992,7 +1013,7 @@ static bool doCompute(Qureg qureg) {
     }
     case Qfunc_statevec_multiControlledPhaseShift: {
       int task_n = 1;
-      while (i + task_n < (int)tbd.size() && task_n < MAX_TASK_SIZE &&
+      while (i + task_n < (int)tbd.size() &&
              tbd[i + task_n].func == Qfunc_statevec_multiControlledPhaseShift)
         ++task_n;
       statevec_multiControlledPhaseShift_combine_doCompute(qureg, task_n,
@@ -1134,21 +1155,19 @@ QuESTEnv createQuESTEnv(void) {
     Qureg q = createQureg(N, env);
     /* GHZ quantum circuit */
     hadamard(q, 0);
-    for (int i = 0; i < N - 2; ++i)
+    for (int i = 0; i < N - 1; ++i)
       controlledNot(q, i, i + 1);
     /* end of GHZ circuit */
+
     /* QFT starts */
-    hadamard(q, 0);
-    for (int i = 0; i < N - 2; ++i) {
-      for (int j = 0; j < i + 1; ++j)
-        controlledRotateZ(q, j, i + 1,
-                          3.14159265358979323846 * pow(0.5, i + 1 - j));
-      hadamard(q, i + 1);
+    for (int i = 0; i < N - 1; ++i) {
+      for (int j = 0; j < i; ++j)
+        controlledRotateZ(q, j, i, M_PI * pow(0.5, i - j));
+      hadamard(q, i);
     }
     /* end of QFT circuit */
     for (int i = 0; i < N; ++i) {
-      auto warmup_getAmp = getAmp(q, i);
-      auto warmup_calcProbOfOutcome = calcProbOfOutcome(q, i, 1);
+      auto tmp = calcProbOfOutcome(q, i, 1);
     }
     destroyQureg(q, env);
     reinterpret_cast<wukDeviceHandle *>(env.ehandle)->device_restore_pinned();
