@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH --exclusive
 
-SYSUEST_HOME=~/SYSuEST
+SYSUEST_HOME=/mnt/pan/users/WuK/SYSuEST
 
 spack unload -a
 spack load cmake@3.18.3
@@ -26,6 +26,7 @@ fi
 
 spack find -v --loaded
 
+for CB in 12 11 10; do
 for WORKLOAD in random GHZ GHZ_QFT_N; do
     if [ $WORKLOAD == "GHZ" ]; then
         USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
@@ -37,19 +38,19 @@ for WORKLOAD in random GHZ GHZ_QFT_N; do
     rm -fr *
     cmake \
         -DUSER_SOURCE=$USER_SOURCE \
-        -DCMAKE_C_FLAGS=" -lcublas -lcudart " \
+        -DCMAKE_C_FLAGS=" -DCOMBINE_BIT=$CB -lcublas -lcudart " \
         -DDISTRIBUTED=1 \
         -DGPUACCELERATED=1 \
-        -DGPU_COMPUTE_CAPABILITY=70 \
+        -DGPU_COMPUTE_CAPABILITY=80 \
         "$SYSUEST_HOME"
     make -j
-    for N in 1 2 4; do
+    for N in 4 2 1; do
         echo "Executing $WORKLOAD with $N process..."
-        mpirun -n $N --bind-to none $SYSUEST_HOME/examples/SYSuEST/bind-to-core \
-            ./demo
+        `which mpirun` -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
         for FILENAME in "probs.dat" "stateVector.dat"; do
             echo "Checking $FILENAME..."
             diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
         done
     done
+done
 done
