@@ -1,8 +1,2 @@
-rank 0=star1 slot=0
-rank 1=star1 slot=1
-rank 2=star2 slot=0
-rank 3=star2 slot=1
-rank 4=star3 slot=0
-rank 5=star3 slot=1
-rank 6=star4 slot=0
-rank 7=star4 slot=1
+rank 0=star1 slot=63
+rank 1=star1-ib1 slot=32

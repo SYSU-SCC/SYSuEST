@@ -26,7 +26,8 @@ fi
 
 spack find -v --loaded
 
-for CB in 12 11 10; do
+if false; then
+for CB in 12; do
 for WORKLOAD in random GHZ GHZ_QFT_N; do
     if [ $WORKLOAD == "GHZ" ]; then
         USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
@@ -44,9 +45,21 @@ for WORKLOAD in random GHZ GHZ_QFT_N; do
         -DGPU_COMPUTE_CAPABILITY=80 \
         "$SYSUEST_HOME"
     make -j
-    for N in 4 2 1; do
+done
+done
+else
+for CB in 12; do
+for WORKLOAD in random GHZ GHZ_QFT_N; do
+    if [ $WORKLOAD == "GHZ" ]; then
+        USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
+    else
+        USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.c"
+    fi
+    cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+    for N in 2; do
         echo "Executing $WORKLOAD with $N process..."
-        `which mpirun` -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
+        # cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+        `which mpirun`  -x PATH -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
         for FILENAME in "probs.dat" "stateVector.dat"; do
             echo "Checking $FILENAME..."
             diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
@@ -54,3 +67,4 @@ for WORKLOAD in random GHZ GHZ_QFT_N; do
     done
 done
 done
+fi

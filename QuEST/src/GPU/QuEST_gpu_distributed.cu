@@ -23,7 +23,7 @@
 #endif
 
 #if !defined(COMBINE_BIT)
-#define COMBINE_BIT 10 // 11 for A100
+#define COMBINE_BIT 10 // 11,12 for A100
 #endif
 
 #if !defined(EXCHANGE_WARMUP_BIT)
@@ -228,14 +228,22 @@ public:
     cublasSetWorkspace(handle(), device_malloc<char>(workspaceSizeInBytes),
                        workspaceSizeInBytes);
 #endif
+#if defined(uSE_PINNED_MEMORY)
     cudaHostAlloc(&hostMemPool, hostMemPoolSize, cudaHostAllocPortable);
+#else
+    hostMemPool = new char[hostMemPoolSize];
+#endif
     if (!hostMemPool) {
       printf("Could not allocate memory on Host!\n");
       exit(EXIT_FAILURE);
     }
   }
   ~wukDeviceHandle() {
+#if defined(USE_PINNED_MEMORY)
     cudaFreeHost(hostMemPool);
+#else
+    delete[] hostMemPool;
+#endif
     cudaFree(deviceMemPool);
   }
   void fork() {
@@ -1110,6 +1118,18 @@ void statevec_createQureg(Qureg *q, int numQubits, QuESTEnv env) {
 
 void statevec_destroyQureg(Qureg qureg, QuESTEnv env) {}
 
+void syncQuESTEnv(QuESTEnv env) {
+  reinterpret_cast<wukDeviceHandle *>(env.ehandle)->sync();
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+int syncQuESTSuccess(int successCode) {
+  int totalSuccess;
+  MPI_Allreduce(&successCode, &totalSuccess, 1, MPI_INT, MPI_LAND,
+                MPI_COMM_WORLD);
+  return totalSuccess;
+}
+
 QuESTEnv createQuESTEnv(void) {
 
   QuESTEnv env;
@@ -1136,7 +1156,7 @@ QuESTEnv createQuESTEnv(void) {
     MPI_Comm_rank(local_comm, &local_rank);
     MPI_Comm_free(&local_comm);
     cudaGetDeviceCount(&gpuDeviceCount);
-    int device = local_rank % gpuDeviceCount;
+    int device = env.rank;//(local_rank + 1 ) % gpuDeviceCount;
     env.ehandle = new wukDeviceHandle(device);
   } while (0);
 
@@ -1186,19 +1206,8 @@ QuESTEnv createQuESTEnv(void) {
   } while (0);
 #endif
 
+  syncQuESTEnv(env);
   return env;
-}
-
-void syncQuESTEnv(QuESTEnv env) {
-  reinterpret_cast<wukDeviceHandle *>(env.ehandle)->sync();
-  MPI_Barrier(MPI_COMM_WORLD);
-}
-
-int syncQuESTSuccess(int successCode) {
-  int totalSuccess;
-  MPI_Allreduce(&successCode, &totalSuccess, 1, MPI_INT, MPI_LAND,
-                MPI_COMM_WORLD);
-  return totalSuccess;
 }
 
 void destroyQuESTEnv(QuESTEnv env) {
