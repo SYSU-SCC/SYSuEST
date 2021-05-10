@@ -26,45 +26,36 @@ fi
 
 spack find -v --loaded
 
-if false; then
 for CB in 12; do
-for WORKLOAD in random GHZ GHZ_QFT_N; do
-    if [ $WORKLOAD == "GHZ" ]; then
-        USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
-    else
-        USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.c"
-    fi
-    mkdir -p "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
-    cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
-    rm -fr *
-    cmake \
-        -DUSER_SOURCE=$USER_SOURCE \
-        -DCMAKE_C_FLAGS=" -DCOMBINE_BIT=$CB -lcublas -lcudart " \
-        -DDISTRIBUTED=1 \
-        -DGPUACCELERATED=1 \
-        -DGPU_COMPUTE_CAPABILITY=80 \
-        "$SYSUEST_HOME"
-    make -j
-done
-done
-else
-for CB in 12; do
-for WORKLOAD in random GHZ GHZ_QFT_N; do
-    if [ $WORKLOAD == "GHZ" ]; then
-        USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
-    else
-        USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.c"
-    fi
-    cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
-    for N in 2; do
-        echo "Executing $WORKLOAD with $N process..."
-        # cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
-        `which mpirun`  -x PATH -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
-        for FILENAME in "probs.dat" "stateVector.dat"; do
-            echo "Checking $FILENAME..."
-            diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
-        done
+    for WORKLOAD in random GHZ GHZ_QFT_N; do
+        if [ $WORKLOAD == "GHZ" ]; then
+            USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
+        else
+            USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.c"
+        fi
+        if false; then
+            rm -fr "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+            mkdir -p "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+            cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+            cmake \
+                -DUSER_SOURCE=$USER_SOURCE \
+                -DCMAKE_C_FLAGS=" -DCOMBINE_BIT=$CB -lcublas -lcudart " \
+                -DDISTRIBUTED=1 \
+                -DGPUACCELERATED=1 \
+                -DGPU_COMPUTE_CAPABILITY=80 \
+                "$SYSUEST_HOME"
+            make -j
+        else
+            cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+            for N in 8 4 1 2; do
+                echo "Executing $WORKLOAD with $N process..."
+                # cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+                $(which mpirun) -x PATH -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
+                for FILENAME in "probs.dat" "stateVector.dat"; do
+                    echo "Checking $FILENAME..."
+                    diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
+                done
+            done
+        fi
     done
 done
-done
-fi
