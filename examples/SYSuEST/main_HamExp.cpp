@@ -50,7 +50,7 @@ int main(){
         fprintf(fp, "Expectation value of %4d th Hamiltonian: %12.6lf\n", cnt++, en);
         Energy += en;
     }
-    printf("Calculated energy for given Hamiltonian is %12.6lf\n", Energy);
+    if(env.rank==0) printf("Calculated energy for given Hamiltonian is %12.6lf\n", Energy);
 
     /* finish timing */
     double t = get_wall_time() - t0;

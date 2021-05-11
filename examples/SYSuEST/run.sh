@@ -49,6 +49,8 @@ for CB in 12; do
                 "$SYSUEST_HOME"
             make -j
         else
+            nvidia-smi
+            nvidia-smi topo -m
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             if [ $WORKLOAD == "main_HamExp" ]; then
                 FILENAME=ham_H12.dat
