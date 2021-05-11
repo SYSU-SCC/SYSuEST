@@ -30,13 +30,13 @@ fi
 spack find -v --loaded
 
 for CB in 12; do
-    for WORKLOAD in main_InvQFT main_HamExp random GHZ GHZ_QFT_N; do
+    for WORKLOAD in main_QFTInvQFT; do
         if [ $WORKLOAD == "GHZ" ]; then
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.cpp"
         else
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.cpp"
         fi
-        if false; then
+        if true; then
             rm -fr "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             mkdir -p "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
@@ -44,7 +44,7 @@ for CB in 12; do
                 -DUSER_SOURCE=$USER_SOURCE \
                 -DCMAKE_C_FLAGS=" -DCOMBINE_BIT=$CB -lcublas -lcudart " \
                 -DDISTRIBUTED=1 \
-                -DGPUACCELERATED=1 \
+                -DGPUACCELERATED=0 \
                 -DGPU_COMPUTE_CAPABILITY=80 \
                 "$SYSUEST_HOME"
             make -j
@@ -67,6 +67,11 @@ for CB in 12; do
                 else
                     for FILENAME in "probs.dat" "stateVector.dat"; do
                         if [ $WORKLOAD == "main_InvQFT" ]; then
+                            if [ $FILENAME == "stateVector.dat" ]; then
+                                FILENAME=stateVectors.dat
+                            fi
+                        fi
+                        if [ $WORKLOAD == "main_QFTInvQFT" ]; then
                             if [ $FILENAME == "stateVector.dat" ]; then
                                 FILENAME=stateVectors.dat
                             fi
