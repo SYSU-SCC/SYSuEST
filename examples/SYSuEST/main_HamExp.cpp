@@ -47,7 +47,7 @@ int main(){
     double Energy = 0;
     int cnt=0;
     for(auto en: Energies){
-        fprintf(fp, "Expectation value of %4d th Hamiltonian: %12.6lf\n", cnt++, en);
+        if(env.rank==0) fprintf(fp, "Expectation value of %4d th Hamiltonian: %12.6lf\n", cnt++, en);
         Energy += en;
     }
     if(env.rank==0) printf("Calculated energy for given Hamiltonian is %12.6lf\n", Energy);
