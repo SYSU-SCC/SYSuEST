@@ -1156,7 +1156,7 @@ QuESTEnv createQuESTEnv(void) {
     MPI_Comm_rank(local_comm, &local_rank);
     MPI_Comm_free(&local_comm);
     cudaGetDeviceCount(&gpuDeviceCount);
-    int device = env.rank;//(local_rank + 1 ) % gpuDeviceCount;
+    int device = local_rank % gpuDeviceCount;
     env.ehandle = new wukDeviceHandle(device);
   } while (0);
 
@@ -1372,9 +1372,11 @@ void statevec_initPlusState(Qureg qureg) {
   threadsPerCUDABlock = THREADS_PER_CUDA_BLOCK;
   auto stateVecSize = qureg.numAmpsPerChunk * qureg.numChunks;
   CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk) / threadsPerCUDABlock);
-  statevec_initPlusStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
+  statevec_initPlusStateKernel<<<CUDABlocks, threadsPerCUDABlock, 0,
+                                 get_wukDeviceHandle(qureg)->stream()>>>(
       qureg.numAmpsPerChunk, stateVecSize, 1.0 / sqrt((qreal)stateVecSize),
       qureg.deviceStateVec.real, qureg.deviceStateVec.imag);
+  get_wukDeviceHandle(qureg)->sync();
 }
 
 void statevec_initClassicalState(Qureg qureg, long long int stateInd) {
@@ -1387,6 +1389,7 @@ void statevec_initClassicalState(Qureg qureg, long long int stateInd) {
                   get_wukDeviceHandle(qureg)->stream());
   static qreal reals = 1.0, imags = 0.0;
   statevec_setAmps(qureg, stateInd, &reals, &imags, 1);
+  get_wukDeviceHandle(qureg)->sync();
 }
 
 static __global__
@@ -1417,9 +1420,11 @@ void statevec_initStateDebug(Qureg qureg) {
 
   indexOffset = chunkSize * qureg.chunkId;
 
-  statevec_initDebugStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
+  statevec_initDebugStateKernel<<<CUDABlocks, threadsPerCUDABlock, 0,
+                                  get_wukDeviceHandle(qureg)->stream()>>>(
       qureg.numAmpsPerChunk, qureg.deviceStateVec.real,
       qureg.deviceStateVec.imag, indexOffset);
+  get_wukDeviceHandle(qureg)->sync();
 }
 
 static __global__
@@ -1452,9 +1457,12 @@ void statevec_initStateOfSingleQubit(Qureg *qureg, int qubitId, int outcome) {
   int threadsPerCUDABlock, CUDABlocks;
   threadsPerCUDABlock = THREADS_PER_CUDA_BLOCK;
   CUDABlocks = ceil((qreal)(qureg->numAmpsPerChunk) / threadsPerCUDABlock);
-  statevec_initStateOfSingleQubitKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
+  statevec_initStateOfSingleQubitKernel<<<
+      CUDABlocks, threadsPerCUDABlock, 0,
+      get_wukDeviceHandle(qureg)->stream()>>>(
       *qureg, qureg->deviceStateVec.real, qureg->deviceStateVec.imag, qubitId,
       outcome);
+  get_wukDeviceHandle(qureg)->sync();
 }
 
 // returns 1 if successful, else 0
