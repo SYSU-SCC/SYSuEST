@@ -34,6 +34,10 @@
 #define BUFFER_AMP (1LL << EXCHANGE_WARMUP_BIT)
 #endif
 
+#if !defined(NO_USE_PINNED_MEMORY)
+#define USE_PINNED_MEMORY
+#endif
+
 #ifdef USE_BLASPP
 
 #include <blas.hh>
@@ -228,7 +232,7 @@ public:
     cublasSetWorkspace(handle(), device_malloc<char>(workspaceSizeInBytes),
                        workspaceSizeInBytes);
 #endif
-#if defined(uSE_PINNED_MEMORY)
+#if defined(USE_PINNED_MEMORY)
     cudaHostAlloc(&hostMemPool, hostMemPoolSize, cudaHostAllocPortable);
 #else
     hostMemPool = new char[hostMemPoolSize];
@@ -1459,10 +1463,10 @@ void statevec_initStateOfSingleQubit(Qureg *qureg, int qubitId, int outcome) {
   CUDABlocks = ceil((qreal)(qureg->numAmpsPerChunk) / threadsPerCUDABlock);
   statevec_initStateOfSingleQubitKernel<<<
       CUDABlocks, threadsPerCUDABlock, 0,
-      get_wukDeviceHandle(qureg)->stream()>>>(
+      get_wukDeviceHandle(*qureg)->stream()>>>(
       *qureg, qureg->deviceStateVec.real, qureg->deviceStateVec.imag, qubitId,
       outcome);
-  get_wukDeviceHandle(qureg)->sync();
+  get_wukDeviceHandle(*qureg)->sync();
 }
 
 // returns 1 if successful, else 0

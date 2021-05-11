@@ -4,8 +4,11 @@
 #SBATCH -N 1
 #SBATCH --exclusive
 
-SYSUEST_HOME=/mnt/pan/users/WuK/SYSuEST
-
+if false; then
+    SYSUEST_HOME=~/SYSuEST
+else
+    SYSUEST_HOME=/mnt/pan/users/WuK/SYSuEST
+fi
 spack unload -a
 spack load cmake@3.18.3
 spack load gcc@7.5.0
@@ -27,13 +30,13 @@ fi
 spack find -v --loaded
 
 for CB in 12; do
-    for WORKLOAD in random GHZ GHZ_QFT_N; do
+    for WORKLOAD in main_InvQFT random GHZ GHZ_QFT_N; do
         if [ $WORKLOAD == "GHZ" ]; then
-            USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.c"
+            USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.cpp"
         else
-            USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.c"
+            USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.cpp"
         fi
-        if false; then
+        if true; then
             rm -fr "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             mkdir -p "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
