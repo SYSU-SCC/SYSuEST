@@ -30,7 +30,7 @@ fi
 spack find -v --loaded
 
 for CB in 12; do
-    for WORKLOAD in main_InvQFT random GHZ GHZ_QFT_N; do
+    for WORKLOAD in main_HamExp; do
         if [ $WORKLOAD == "GHZ" ]; then
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.cpp"
         else
@@ -50,19 +50,29 @@ for CB in 12; do
             make -j
         else
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
-            for N in 8; do
+            if [ $WORKLOAD == "main_HamExp" ]; then
+                FILENAME=ham_H12.dat
+                cp "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}" $FILENAME
+            fi
+            for N in 8 4 2 1; do
                 echo "Executing $WORKLOAD with $N process..."
-                # cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
                 $(which mpirun) -x PATH -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
-                for FILENAME in "probs.dat" "stateVector.dat"; do
-                    if [ $WORKLOAD == "main_InvQFT" ]; then
-                        if [ $FILENAME == "stateVector.dat" ]; then
-                            FILENAME=stateVectors.dat
+                if [ $WORKLOAD == "main_HamExp" ]; then
+                    for FILENAME in "ExpHam.dat"; do
+                        echo "Checking $FILENAME..."
+                        diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
+                    done
+                else
+                    for FILENAME in "probs.dat" "stateVector.dat"; do
+                        if [ $WORKLOAD == "main_InvQFT" ]; then
+                            if [ $FILENAME == "stateVector.dat" ]; then
+                                FILENAME=stateVectors.dat
+                            fi
                         fi
-                    fi
-                    echo "Checking $FILENAME..."
-                    diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
-                done
+                        echo "Checking $FILENAME..."
+                        diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
+                    done
+                fi
             done
         fi
     done

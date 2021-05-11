@@ -1526,6 +1526,15 @@ void applyOneQubitDampingError(Qureg qureg, const int targetQubit, qreal prob);
  */
 void applyTwoQubitDepolariseError(Qureg qureg, const int qubit1, const int qubit2, qreal prob);
 
+#if !defined(NO_USE_ASC_QuEST)
+void u1Gate(Qureg qureg, int targetQubit, qreal phi);
+void u2Gate(Qureg qureg, int targetQubit, qreal phi, qreal lambda);
+void u3Gate(Qureg qureg, int targetQubit, qreal theta, qreal phi, qreal lambda);
+void SqX(Qureg qureg, int targetQubit);
+void SqY(Qureg qureg, int targetQubit);
+void SqW(Qureg qureg, int targetQubit);
+#endif
+
 /** Modifies combineQureg to become (1-prob)combineProb + prob otherQureg.
  * Both registers must be equal-dimension density matrices, and prob must be in [0, 1].
  *

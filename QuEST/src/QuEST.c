@@ -724,7 +724,259 @@ void reportStateToScreen(Qureg qureg, QuESTEnv env, int reportRank)  {
 int  getQuEST_PREC(void) {
   return sizeof(qreal)/4;
 }
-  
+
+#if !defined(NO_USE_ASC_GATE)
+#define macro_isMatrixUnitary(m, dim, retVal)                                  \
+  {                                                                            \
+    /* elemRe_ and elemIm_ must not exist in caller scope */                   \
+    qreal elemRe_, elemIm_;                                                    \
+    retVal = 1;                                                                \
+    /* check m * ConjugateTranspose(m) == Identity */                          \
+    for (int r = 0; r < (dim); r++) {                                          \
+      for (int c = 0; c < (dim); c++) {                                        \
+        /* m[r][...] * ConjugateTranspose(m)[...][c] */                        \
+        elemRe_ = 0;                                                           \
+        elemIm_ = 0;                                                           \
+        for (int i = 0; i < (dim); i++) {                                      \
+          /* m[r][i] * conj(m[c][i]) */                                        \
+          elemRe_ +=                                                           \
+              m.real[r][i] * m.real[c][i] + m.imag[r][i] * m.imag[c][i];       \
+          elemIm_ +=                                                           \
+              m.imag[r][i] * m.real[c][i] - m.real[r][i] * m.imag[c][i];       \
+        }                                                                      \
+        /* check distance from identity */                                     \
+        if ((absReal(elemIm_) > REAL_EPS) ||                                   \
+            (r == c && absReal(elemRe_ - 1) > REAL_EPS) ||                     \
+            (r != c && absReal(elemRe_) > REAL_EPS)) {                         \
+          retVal = 0;                                                          \
+          break;                                                               \
+        }                                                                      \
+      }                                                                        \
+      if (retVal == 0)                                                         \
+        break;                                                                 \
+    }                                                                          \
+  }
+struct ComplexMatrix2_QuEST3 {
+  qreal real[2][2], imag[2][2];
+};
+
+static int isMatrix2Unitary(ComplexMatrix2 u) {
+  int dim = 2;
+  int retVal;
+  struct ComplexMatrix2_QuEST3 src;
+  src.real[0][0] = u.r0c0.real;
+  src.imag[0][0] = u.r0c0.imag;
+  src.real[0][1] = u.r0c1.real;
+  src.imag[0][1] = u.r0c1.imag;
+  src.real[1][0] = u.r1c0.real;
+  src.imag[1][0] = u.r1c0.imag;
+  src.real[1][1] = u.r1c1.real;
+  src.imag[1][1] = u.r1c1.imag;
+  macro_isMatrixUnitary(src, dim, retVal);
+  return retVal;
+}
+
+static void validateOneQubitUnitaryMatrix(ComplexMatrix2 u,
+                                          const char *caller) {
+  QuESTAssert(isMatrix2Unitary(u), E_NON_UNITARY_MATRIX, caller);
+}
+
+static ComplexMatrix2 getConjugateMatrix2(ComplexMatrix2 src) {
+  ComplexMatrix2 conj;
+  conj.r0c0.real = src.r0c0.real;
+  conj.r0c0.real = -src.r0c0.imag;
+  conj.r0c1.real = src.r0c1.real;
+  conj.r0c1.real = -src.r0c1.imag;
+  conj.r1c0.real = src.r1c0.real;
+  conj.r1c0.real = -src.r1c0.imag;
+  conj.r1c1.real = src.r1c1.real;
+  conj.r1c1.real = -src.r1c1.imag;
+  return conj;
+}
+
+void u1Gate(Qureg qureg, int targetQubit, qreal lambda) {
+  validateTarget(qureg, targetQubit, __func__);
+
+  qreal cos_ = cos(lambda), sin_ = sin(lambda);
+
+#if defined(USE_QUEST_3)
+  ComplexMatrix2 u = {.real = {{1.0, 0.0}, {0.0, cos_}},
+                      .imag = {{0.0, 0.0}, {0.0, sin_}}};
+#else
+  ComplexMatrix2 u;
+  u.r0c0.real = 1.0;
+  u.r0c0.imag = 0.0;
+  u.r0c1.real = 0.0;
+  u.r0c1.imag = 0.0;
+  u.r1c0.real = 0.0;
+  u.r1c0.imag = 0.0;
+  u.r1c1.real = cos_;
+  u.r1c1.imag = sin_;
+#endif
+  validateOneQubitUnitaryMatrix(u, __func__);
+
+  statevec_unitary(qureg, targetQubit, u);
+  if (qureg.isDensityMatrix) {
+    statevec_unitary(qureg, targetQubit + qureg.numQubitsRepresented,
+                     getConjugateMatrix2(u));
+  }
+
+  qasm_recordUnitary(qureg, u, targetQubit);
+}
+void u2Gate(Qureg qureg, int targetQubit, qreal phi, qreal lambda) {
+  validateTarget(qureg, targetQubit, __func__);
+
+  qreal Inv_sqrt2 = 1 / sqrt(2);
+  qreal cos_phi = cos(phi) * Inv_sqrt2, sin_phi = sin(phi) * Inv_sqrt2;
+  qreal cos_lambda = cos(lambda) * Inv_sqrt2,
+        sin_lambda = sin(lambda) * Inv_sqrt2;
+  qreal cos_ = cos(phi + lambda) * Inv_sqrt2,
+        sin_ = sin(phi + lambda) * Inv_sqrt2;
+
+#if defined(USE_QUEST_3)
+  ComplexMatrix2 u = {.real = {{Inv_sqrt2, -cos_lambda}, {cos_phi, cos_}},
+                      .imag = {{0.0, -sin_lambda}, {sin_phi, sin_}}};
+#else
+  ComplexMatrix2 u;
+  u.r0c0.real = Inv_sqrt2;
+  u.r0c0.imag = 0.0;
+  u.r0c1.real = -cos_lambda;
+  u.r0c1.imag = -sin_lambda;
+  u.r1c0.real = cos_phi;
+  u.r1c0.imag = sin_phi;
+  u.r1c1.real = cos_;
+  u.r1c1.imag = sin_;
+#endif
+  validateOneQubitUnitaryMatrix(u, __func__);
+
+  statevec_unitary(qureg, targetQubit, u);
+  if (qureg.isDensityMatrix) {
+    statevec_unitary(qureg, targetQubit + qureg.numQubitsRepresented,
+                     getConjugateMatrix2(u));
+  }
+
+  qasm_recordUnitary(qureg, u, targetQubit);
+}
+void u3Gate(Qureg qureg, int targetQubit, qreal theta, qreal phi,
+            qreal lambda) {
+  validateTarget(qureg, targetQubit, __func__);
+
+  qreal cos_theta = cos(theta / 2), sin_theta = sin(theta / 2);
+  qreal cos_phi = cos(phi), sin_phi = sin(phi);
+  qreal cos_lambda = cos(lambda), sin_lambda = sin(lambda);
+  qreal cos_ = cos(phi + lambda), sin_ = sin(phi + lambda);
+
+#if defined(USE_QUEST_3)
+  ComplexMatrix2 u = {.real = {{cos_theta, -cos_lambda * sin_theta},
+                               {cos_phi * sin_theta, cos_ * cos_theta}},
+                      .imag = {{0.0, -sin_lambda * sin_theta},
+                               {sin_phi * sin_theta, sin_ * cos_theta}}};
+#else
+  ComplexMatrix2 u;
+  u.r0c0.real = cos_theta;
+  u.r0c0.imag = 0.0;
+  u.r0c1.real = -cos_lambda * sin_theta;
+  u.r0c1.imag = -sin_lambda * sin_theta;
+  u.r1c0.real = cos_phi * sin_theta;
+  u.r1c0.imag = sin_phi * sin_theta;
+  u.r1c1.real = cos_ * cos_theta;
+  u.r1c1.imag = sin_ * cos_theta;
+#endif
+  validateOneQubitUnitaryMatrix(u, __func__);
+
+  statevec_unitary(qureg, targetQubit, u);
+  if (qureg.isDensityMatrix) {
+    statevec_unitary(qureg, targetQubit + qureg.numQubitsRepresented,
+                     getConjugateMatrix2(u));
+  }
+
+  qasm_recordUnitary(qureg, u, targetQubit);
+}
+void SqX(Qureg qureg, int targetQubit) {
+  validateTarget(qureg, targetQubit, __func__);
+
+  qreal Inv_sqrt2 = 1 / sqrt(2);
+#if defined(USE_QUEST_3)
+  ComplexMatrix2 u = {.real = {{Inv_sqrt2, 0.0}, {0.0, Inv_sqrt2}},
+                      .imag = {{0.0, -Inv_sqrt2}, {-Inv_sqrt2, 0.0}}};
+#else
+  ComplexMatrix2 u;
+  u.r0c0.real = Inv_sqrt2;
+  u.r0c0.imag = 0.0;
+  u.r0c1.real = 0.0;
+  u.r0c1.imag = -Inv_sqrt2;
+  u.r1c0.real = 0.0;
+  u.r1c0.imag = -Inv_sqrt2;
+  u.r1c1.real = Inv_sqrt2;
+  u.r1c1.imag = 0.0;
+#endif
+  validateOneQubitUnitaryMatrix(u, __func__);
+
+  statevec_unitary(qureg, targetQubit, u);
+  if (qureg.isDensityMatrix) {
+    statevec_unitary(qureg, targetQubit + qureg.numQubitsRepresented,
+                     getConjugateMatrix2(u));
+  }
+
+  qasm_recordUnitary(qureg, u, targetQubit);
+}
+void SqY(Qureg qureg, int targetQubit) {
+  validateTarget(qureg, targetQubit, __func__);
+
+  qreal Inv_sqrt2 = 1 / sqrt(2);
+#if defined(USE_QUEST_3)
+  ComplexMatrix2 u = {.real = {{Inv_sqrt2, -Inv_sqrt2}, {Inv_sqrt2, Inv_sqrt2}},
+                      .imag = {{0.0, 0.0}, {0.0, 0.0}}};
+#else
+  ComplexMatrix2 u;
+  u.r0c0.real = Inv_sqrt2;
+  u.r0c0.imag = 0.0;
+  u.r0c1.real = -Inv_sqrt2;
+  u.r0c1.imag = 0.0;
+  u.r1c0.real = Inv_sqrt2;
+  u.r1c0.imag = 0.0;
+  u.r1c1.real = Inv_sqrt2;
+  u.r1c1.imag = 0.0;
+#endif
+  validateOneQubitUnitaryMatrix(u, __func__);
+
+  statevec_unitary(qureg, targetQubit, u);
+  if (qureg.isDensityMatrix) {
+    statevec_unitary(qureg, targetQubit + qureg.numQubitsRepresented,
+                     getConjugateMatrix2(u));
+  }
+
+  qasm_recordUnitary(qureg, u, targetQubit);
+}
+void SqW(Qureg qureg, int targetQubit) {
+  validateTarget(qureg, targetQubit, __func__);
+
+  qreal Inv_sqrt2 = 1 / sqrt(2);
+#if defined(USE_QUEST_3)
+  ComplexMatrix2 u = {.real = {{Inv_sqrt2, -0.5}, {0.5, Inv_sqrt2}},
+                      .imag = {{0.0, -0.5}, {-0.5, 0.0}}};
+#else
+  ComplexMatrix2 u;
+  u.r0c0.real = Inv_sqrt2;
+  u.r0c0.imag = 0.0;
+  u.r0c1.real = -0.5;
+  u.r0c1.imag = -0.5;
+  u.r1c0.real = 0.5;
+  u.r1c0.imag = -0.5;
+  u.r1c1.real = Inv_sqrt2;
+  u.r1c1.imag = 0.0;
+#endif
+  validateOneQubitUnitaryMatrix(u, __func__);
+
+  statevec_unitary(qureg, targetQubit, u);
+  if (qureg.isDensityMatrix) {
+    statevec_unitary(qureg, targetQubit + qureg.numQubitsRepresented,
+                     getConjugateMatrix2(u));
+  }
+
+  qasm_recordUnitary(qureg, u, targetQubit);
+}
+#endif
 
 #ifdef __cplusplus
 }
