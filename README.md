@@ -10,13 +10,70 @@ Supported by Student Cluster Competition Team @ Sun Yat-sen University.
 examples/SYSuEST/run.sh
 ```
 
-## Results
+## Final Results
 
-|     GPU(s)      |   1   |   2   |   4   |
-| :-------------: | :---: | :---: | :---: |
-|     random      |   x   | 9.62s | 7.38s |
-|       GHZ       |   x   | 0.98s | 0.79s |
-| GHZ_QFT_N(N=29) | 0.75s | 0.47s | 0.38s |
+|     GPU(s)      |     1      |       2        |     4      |       8        |
+| :-------------: | :--------: | :------------: | :--------: | :------------: |
+|   main_HamExp   | 15.130841s | **13.011804s** | 18.062945s |   15.508143s   |
+|   main_InvQFT   |     x      |       x        |     x      | **33.724309s** |
+|     random      |            |                |            |                |
+|       GHZ       |            |                |            |                |
+| GHZ_QFT_N(N=29) |            |                |            |                |
+
+### Environment
+
+We run SYSuEST on XingHe-1, which has 4 nodes with 2 NVIDIA-A100 each.
+
+```bash
+$ nvidia-smi
+Tue May 11 12:08:26 2021
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 455.32.00    Driver Version: 455.32.00    CUDA Version: 11.1     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  A100-PCIE-40GB      On   | 00000000:CA:00.0 Off |                    0 |
+| N/A   30C    P0    36W / 250W |      0MiB / 40536MiB |      0%      Default |
+|                               |                      |             Disabled |
++-------------------------------+----------------------+----------------------+
+|   1  A100-PCIE-40GB      On   | 00000000:E3:00.0 Off |                    0 |
+| N/A   31C    P0    36W / 250W |      0MiB / 40536MiB |      0%      Default |
+|                               |                      |             Disabled |
++-------------------------------+----------------------+----------------------+
+
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+$ nvidia-smi topo -m
+        GPU0    GPU1    mlx5_0  CPU Affinity    NUMA Affinity
+GPU0     X      NODE    NODE    32-63   1
+GPU1    NODE     X      NODE    32-63   1
+mlx5_0  NODE    NODE     X
+
+Legend:
+
+  X    = Self
+  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)
+  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node
+  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)
+  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)
+  PIX  = Connection traversing at most a single PCIe bridge
+  NV#  = Connection traversing a bonded set of # NVLinks
+```
+
+## Preliminary Results
+
+|     GPU(s)      |   1   |   2   |     4     |
+| :-------------: | :---: | :---: | :-------: |
+|     random      |   x   | 9.62s | **7.38s** |
+|       GHZ       |   x   | 0.98s | **0.79s** |
+| GHZ_QFT_N(N=29) | 0.75s | 0.47s |   0.38s   |
 
 ### Environment
 
