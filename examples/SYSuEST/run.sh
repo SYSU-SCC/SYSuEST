@@ -44,7 +44,7 @@ for CB in 12; do
                 -DUSER_SOURCE=$USER_SOURCE \
                 -DCMAKE_C_FLAGS=" -DCOMBINE_BIT=$CB -lcublas -lcudart " \
                 -DDISTRIBUTED=1 \
-                -DGPUACCELERATED=0 \
+                -DGPUACCELERATED=1 \
                 -DGPU_COMPUTE_CAPABILITY=80 \
                 "$SYSUEST_HOME"
             make -j
