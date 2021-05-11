@@ -36,7 +36,7 @@ for CB in 12; do
         else
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.cpp"
         fi
-        if true; then
+        if false; then
             rm -fr "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             mkdir -p "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
@@ -50,11 +50,16 @@ for CB in 12; do
             make -j
         else
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
-            for N in 8 4 1 2; do
+            for N in 8; do
                 echo "Executing $WORKLOAD with $N process..."
                 # cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
                 $(which mpirun) -x PATH -x LD_LIBRARY_PATH -n $N --rankfile $SYSUEST_HOME/examples/SYSuEST/rankfile ./demo
                 for FILENAME in "probs.dat" "stateVector.dat"; do
+                    if [ $WORKLOAD == "main_InvQFT" ]; then
+                        if [ $FILENAME == "stateVector.dat" ]; then
+                            FILENAME=stateVectors.dat
+                        fi
+                    fi
                     echo "Checking $FILENAME..."
                     diff $FILENAME "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}"
                 done
