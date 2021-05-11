@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH --exclusive
 
-if false; then
+if true; then
     SYSUEST_HOME=~/SYSuEST
 else
     SYSUEST_HOME=/mnt/pan/users/WuK/SYSuEST
@@ -30,13 +30,13 @@ fi
 spack find -v --loaded
 
 for CB in 12; do
-    for WORKLOAD in main_QFTInvQFT; do
+    for WORKLOAD in main_InvQFT main_HamExp random GHZ GHZ_QFT_N; do
         if [ $WORKLOAD == "GHZ" ]; then
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.cpp"
         else
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/$WORKLOAD.cpp"
         fi
-        if true; then
+        if false; then
             rm -fr "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             mkdir -p "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
@@ -52,6 +52,10 @@ for CB in 12; do
             nvidia-smi
             nvidia-smi topo -m
             cd "$SYSUEST_HOME/../SYSuEST_build_$WORKLOAD"
+            if [ $WORKLOAD == "main_shor" ]; then
+                FILENAME=func_python.py
+                cp "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}" $FILENAME
+            fi
             if [ $WORKLOAD == "main_HamExp" ]; then
                 FILENAME=ham_H12.dat
                 cp "$SYSUEST_HOME/examples/SYSuEST/${FILENAME}_${WORKLOAD}" $FILENAME
