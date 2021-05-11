@@ -54,7 +54,7 @@ int main(){
 
     /* finish timing */
     double t = get_wall_time() - t0;
-    printf(" Time cost: %lf\n", t);
+    if(env.rank==0) printf(" Time cost: %lf\n", t);
 
     destroyQureg(QReg, env);
     destroyQuESTEnv(env);
