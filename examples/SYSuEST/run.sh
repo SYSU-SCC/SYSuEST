@@ -30,7 +30,7 @@ fi
 spack find -v --loaded
 
 for CB in 12; do
-    for WORKLOAD in main_HamExp; do
+    for WORKLOAD in main_InvQFT main_HamExp random GHZ GHZ_QFT_N; do
         if [ $WORKLOAD == "GHZ" ]; then
             USER_SOURCE="$SYSUEST_HOME/examples/SYSuEST/GHZ_QFT.cpp"
         else
